@@ -70,6 +70,8 @@ https\://discord.gg/ZGMmYe3MvN
 ---
 ## Changelog
 
+2.8.0
+
 	- Blender 4.2 LTS Compatibility
 	- Updated ARRAY values for VSS/Vert Count
 	- Slightly reworked interpolation logic
