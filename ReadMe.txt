@@ -68,15 +68,20 @@ For issues or feedback, contact Chris "Losco Nosciuto" Da Ros on his discord ser
 https\://discord.gg/ZGMmYe3MvN
 
 ---
+## Changelog
 
+	- Blender 4.2 LTS Compatibility
+	- Updated ARRAY values for VSS/Vert Count
+	- Slightly reworked interpolation logic
 
+----------------
 
 2.7.5
 
 	- Fixed a bug with the "Hide Hidden Collections". Now, both hidden collections and children of hidden collections should correctly be excluded.
 
 
-## Changelog
+----------------
 
 2.7
 	- Expanded Data Array
