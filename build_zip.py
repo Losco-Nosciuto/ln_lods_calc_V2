@@ -20,7 +20,9 @@ INCLUDE = (
     "__init__.py",
     "ReadMe.txt",
     "ln_lod_calculator.py",
+    "ln_lod_screen.py",
     "ln_ui.py",
+    "ln_vertex_count.py",
 )
 
 # Modules that only exist in the Pro edition. The Free build must never

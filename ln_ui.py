@@ -7,6 +7,7 @@ import logging
 import importlib
 
 from . import ln_lod_calculator
+from . import ln_lod_screen
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,147 @@ def check_exporter_status(context) -> tuple:
     return ("NOT_INSTALLED", None)
 
 
+# Render preset / LOD Factor (shared by both editions: the preset changes the
+# vertex-budget curves the calculator writes, so it belongs with the calculator).
+#
+# Official parity (lod_tools_msfs_2024/prefs.py): picking a preset STAMPS the
+# single LOD Factor with the preset's value — they never stack, the factor is
+# the one knob. The enum and the factor are kept in sync in both directions so
+# they can never disagree: editing the factor to an exact anchor value
+# (0.25 / 0.5 / 1 / 2) re-selects that preset; anything else is the Custom
+# state (shown as a "Custom" button, never as a dropdown entry).
+
+_syncing_factor = False
+
+
+def _update_render_preset(self, context):
+    """Stamp the LOD Factor from the picked preset and re-derive results."""
+    global _syncing_factor
+    if _syncing_factor:
+        return
+    preset = getattr(self, "lod_render_preset", ln_lod_screen.DEFAULT_RENDER_PRESET)
+    self.lod_lod_factor = ln_lod_screen.RENDER_PRESETS.get(preset, 1.0)
+    _recalculate_lod_results_if_present(context)
+
+
+def _update_lod_factor(self, context):
+    """Flip the preset when the factor lands exactly on an anchor value.
+
+    No recalculation here: factor edits are continuous (slider), and a full
+    vertex-count scan per event would freeze the UI. Results refresh at the
+    next Calculate / Refresh LOD Viewer List, like the Screen Space Margin.
+    """
+    global _syncing_factor
+    preset = ln_lod_screen.preset_for_factor(self.lod_lod_factor)
+    if preset is None or self.lod_render_preset == preset:
+        return
+    _syncing_factor = True
+    try:
+        self.lod_render_preset = preset
+    finally:
+        _syncing_factor = False
+
+
+def _recalculate_lod_results_if_present(context):
+    """Re-runs the calculation when results already exist.
+
+    Picking a preset changes the per-preset vertex-budget curves, so existing
+    `lod_results` (and therefore the viewer thresholds + the exporter writes)
+    would otherwise go stale. Only direct data writes here — no bpy.ops
+    (safe inside a property update callback).
+    """
+    scene = getattr(context, "scene", None)
+    if scene is None or not getattr(scene, "lod_results", None):
+        return
+    try:
+        lod_data = ln_lod_calculator.count_vertices_in_lod_collections(context)
+        scene.lod_results.clear()
+        if lod_data:
+            for name, vertex_count, screen_size in lod_data:
+                entry = scene.lod_results.add()
+                entry.name = name
+                entry.vertex_count = vertex_count
+                entry.screen_size = screen_size
+    except Exception as exc:
+        logger.warning(f"Render preset changed but LOD results re-calculation failed: {exc}")
+
+
+def draw_render_preset_row(layout, scene):
+    """Shared Render Preset row (calculator + viewer panels).
+
+    - Anchor LOD Factor (0.25/0.5/1/2): the 4-item preset dropdown plus a gear
+      button that opens the LOD Factor popup (the factor is an advanced
+      override, hidden behind the gear — official prefs.py/panels.py layout).
+    - Non-anchor factor (Custom): the dropdown is REPLACED by a "Custom" button
+      that opens the same popup; a Custom entry never appears in the dropdown.
+
+    Fails safe to nothing when the props are absent (should not happen — they
+    are registered with this module — but keeps the panel drawable).
+    """
+    if not hasattr(scene, "lod_render_preset"):
+        return
+    row = layout.row(align=True)
+    row.label(text="Render Preset")
+    if ln_lod_screen.preset_for_factor(scene.lod_lod_factor) is not None:
+        row.prop(scene, "lod_render_preset", text="")
+        if hasattr(bpy.types, "LN_OT_RenderSettings"):
+            row.operator(
+                "ln_lods.render_settings", icon="PREFERENCES", text="", emboss=False
+            )
+    else:
+        factor = scene.lod_lod_factor
+        if hasattr(bpy.types, "LN_OT_RenderSettings"):
+            row.operator(
+                "ln_lods.render_settings",
+                text=f"Custom (x{factor:.3g})",
+                icon="TRIA_DOWN",
+            )
+        else:
+            row.label(text=f"Custom (x{factor:.3g})")
+
+
+class LN_OT_RenderSettings(bpy.types.Operator):
+    """LOD Factor settings popup (advanced — normally set by the Render Preset)"""
+    bl_idname = "ln_lods.render_settings"
+    bl_label = "LOD Render Settings"
+    bl_description = "LOD Factor (advanced — normally set by the Render Preset)"
+    bl_options = {"INTERNAL"}
+
+    def execute(self, context):
+        return {"FINISHED"}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_popup(self)
+
+    def draw(self, context):
+        scene = getattr(context, "scene", None)
+        if scene is None:
+            return
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        row = layout.row()
+        row.alignment = "RIGHT"
+        row.operator("ln_lods.render_settings_reset", text="Reset", icon="RECOVER_LAST")
+        layout.prop(scene, "lod_render_preset", text="Render Preset")
+        layout.prop(scene, "lod_lod_factor")
+
+
+class LN_OT_RenderSettingsReset(bpy.types.Operator):
+    """Reset render settings to defaults (High preset, LOD Factor 1.0)"""
+    bl_idname = "ln_lods.render_settings_reset"
+    bl_label = "Reset Render Settings"
+    bl_options = {"INTERNAL"}
+
+    def execute(self, context):
+        scene = getattr(context, "scene", None)
+        if scene is None:
+            return {"CANCELLED"}
+        # default HIGH -> update handler stamps factor 1.0 + recalcs results
+        scene.lod_render_preset = ln_lod_screen.DEFAULT_RENDER_PRESET
+        return {"FINISHED"}
+
+
 # UI Classes and Operators
 
 class LNLODsPanel(bpy.types.Panel):
@@ -70,6 +212,9 @@ class LNLODsPanel(bpy.types.Panel):
             row.alert = True
             row.label(text="Enable it in Edit > Preferences > Add-ons", icon='BLANK1')
 
+        draw_render_preset_row(layout, scene)
+        layout.label(text="Min sizes follow the sim's per-preset curves", icon='INFO')
+
         layout.operator("object.calculate_lod_screen_sizes", text="Calculate LOD Sizes")
 
         layout.label(text="LOD Results:")
@@ -82,7 +227,7 @@ class LNLODsPanel(bpy.types.Panel):
                 row.alert = True
                 row.label(text=f"{result.name}: Vertex Count out of range ({result.vertex_count} vertices)")
             else:
-                row.label(text=f"{result.name}: {result.vertex_count} vertices, {result.screen_size:.2f}%")
+                row.label(text=f"{result.name}: {result.vertex_count} vertices, {result.screen_size:.4g}%")
 
         layout.separator()
         layout.operator("object.clear_lod_data", text="Clear Data")
@@ -188,12 +333,39 @@ classes = (
     SetLODValuesOperator,
     LODResultProperty,
     OpenReadmePreferences,
+    LN_OT_RenderSettings,
+    LN_OT_RenderSettingsReset,
 )
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.lod_results = bpy.props.CollectionProperty(type=LODResultProperty)
+    bpy.types.Scene.lod_render_preset = bpy.props.EnumProperty(
+        name="Render Preset",
+        description="The sim scales LOD min sizes per graphics preset "
+                    "(stamps the LOD Factor below)",
+        default=ln_lod_screen.DEFAULT_RENDER_PRESET,
+        items=[
+            ("LOW", "Low", "Vertex budgets x 0.25 (1/sqrt factor = 2) — lower-detail LODs appear much sooner."),
+            ("MEDIUM", "Medium", "Vertex budgets x 0.5 (1/sqrt factor = 1.414) — lower-detail LODs appear sooner."),
+            ("HIGH", "High", "Vertex budgets x 1.0 — default in-sim curves; recommended when authoring."),
+            ("ULTRA", "Ultra", "Vertex budgets x 2.0 (1/sqrt factor = 0.707) — high-detail LODs stay far longer."),
+        ],
+        update=_update_render_preset,
+    )
+    bpy.types.Scene.lod_lod_factor = bpy.props.FloatProperty(
+        name="LOD Factor",
+        description="LOD Factor, affected by render presets "
+                    "(Low 0.25, Medium 0.5, High 1, Ultra 2). Picking a preset "
+                    "stamps this value; editing it to an anchor value re-selects "
+                    "that preset, anything else is Custom (applied at the next "
+                    "Calculate)",
+        min=ln_lod_screen.LOD_FACTOR_MIN,
+        max=ln_lod_screen.LOD_FACTOR_MAX,
+        default=1.0,
+        update=_update_lod_factor,
+    )
     bpy.types.Scene.screen_space_margin = bpy.props.FloatProperty(
         name="Screen Space Margin",
         description="Percentage margin to adjust screen space size (0-100%)",
@@ -210,6 +382,8 @@ def register():
 
 def unregister():
     del bpy.types.Scene.lod_results
+    del bpy.types.Scene.lod_render_preset
+    del bpy.types.Scene.lod_lod_factor
     del bpy.types.Scene.screen_space_margin
     del bpy.types.Scene.hide_hidden_collections
     for cls in reversed(classes):

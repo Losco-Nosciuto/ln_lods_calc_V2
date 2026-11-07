@@ -1,6 +1,6 @@
 Copyright 2020 - 2025 Chris "Losco Nosciuto" Da Ros
 
-# LN LODs Addon for Blender (Free Edition — Version 2.9.0)
+# LN LODs Addon for Blender (Free Edition - Version 2.10.0)
 
 ## What It Does
 
@@ -25,7 +25,9 @@ That's it. The exporter will use the correct thresholds and your LODs will trans
 ## Features
 
 - **One-click calculation** — Scans all your LOD collections and computes screen sizes using the official Asobo reference curve. A progress bar keeps you informed on large scenes.
-- **Accuracy you can trust** — Counts vertices the same way the exporter does: accounts for UV seams, split normals, vertex colours, and tangents. What you see is what the sim gets.
+- **Accuracy you can trust** - Counts vertices exactly like the exporter does (per-material primitives, split normals, UVs, vertex colours, instancing; tangents off — the officially counted set). What you see is what the sim gets.
+- **Official floors** - The last LOD is floored at 0.1% (0.001% if empty) and the second-to-last at 1%, with the sim's reverse monotonic cascade. Values are written as exact floats, never rounded.
+- **Render Presets** - Low / Medium / High / Ultra reproduce the sim's four graphics-preset vertex budgets, with an advanced LOD Factor override behind the gear icon.
 - **MSFS Exporter integration** — Writes results directly into the Asobo Multi Exporter's LOD groups. No copy-pasting.
 - **Screen Space Margin** — Adds a safety buffer (2-3% recommended) to prevent LOD flickering in-sim.
 - **Smart collection handling** — Optionally skip hidden collections (and their children) so they don't interfere with your calculation.
@@ -86,6 +88,14 @@ For issues or feedback, contact **Chris "Losco Nosciuto" Da Ros** on his [Discor
 ## Version History
 
 ### Free Changelog
+
+**2.10.0** — MSFS 2024 calculation parity with LN LODs Pro 4.1.0
+- **Official vertex counting** — vertices are counted the way the MSFS exporter counts them (per-material primitives, float32 positions, normals rounded to 4 dp, instancing included, tangents off). This replaces the previous merged-count heuristic.
+- **Official vertex-budget curve** — the closed-form `lod_limits` curve replaces the 48-entry reference table: 0 % up to 1 000 verts, 1 % up to 2 500, linear to 100 % at 250 000, sqrt above.
+- **Official floors and cascade** — last LOD floored at 0.1 % (0.001 % if empty), second-to-last at 1 %, with the reverse monotonic pass the sim applies. Floors are absolute and do not move with the render preset.
+- **Render Presets** — Low / Medium / High / Ultra multiply the vertex budgets by 2 / 1.414 / 1 / 0.707, matching the sim's four graphics presets. The advanced **LOD Factor** lives behind the gear icon; picking a preset stamps it, typing an anchor value re-selects that preset, anything else shows as "Custom". Changing the preset re-derives existing results.
+- **Exact values end-to-end** — thresholds are floats and the exporter write path no longer rounds up, so the sub-1 % official floors survive into `lod_value`.
+- **Reminder:** the LOD Viewer / Testing Mode (including the MSFS 2024/2020 screen-space model switch) remains a Pro-only feature.
 
 **2.9.0** — Unified core with LN LODs Pro 4.0.3
 - **New calculation engine**, shared with the Pro edition — every core improvement now lands in both editions.

@@ -12,7 +12,7 @@ bl_info = {
                     "calculation engine and exporter integration. The Pro edition "
                     "adds the real-time LOD Viewer."),
     "author": "Chris 'Losco Nosciuto' Da Ros",
-    "version": (2, 9, 0),
+    "version": (2, 10, 0),
     "blender": (4, 2, 0),
     "location": "View3D > Sidebar > LN LODs",
     "category": "Object"
