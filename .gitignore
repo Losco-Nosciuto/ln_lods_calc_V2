@@ -1,1 +1,4 @@
 ln_lods_calc2_8_0.zip
+__pycache__/
+.pytest_cache/
+*.zip

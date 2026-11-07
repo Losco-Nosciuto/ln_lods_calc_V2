@@ -1,164 +1,140 @@
 Copyright 2020 - 2025 Chris "Losco Nosciuto" Da Ros
 
-# LNLODs Addon for Blender
+# LN LODs Addon for Blender (Free Edition — Version 2.9.0)
 
-## Description
+## What It Does
 
-LNLODs is a Blender addon designed to:
+LN LODs automates Level-of-Detail setup for Microsoft Flight Simulator 2020 and 2024. If you make aircraft or scenery, this tool saves you hours of manual LOD tweaking.
 
-1. Calculate interpolated screen sizes for collections with LOD naming conventions.
-2. Automatically set LOD values for the MSFS Asobo Exporter for MSFS2020 (Untested with 2024, for now).
+**In a nutshell:** name your collections `_LOD00`, `_LOD01`, etc., click a button, and the addon calculates the correct screen-size thresholds for the Asobo Exporter — calibrated to match how MSFS actually counts vertices.
 
-------------
-!!!!!!!!!NOTE: THIS IS TO MINIMIZE LODs POPPING.
-Any LOD collection with a value above 00,00%, gets automatically translated to 1 when sent to the exporter IF ANY SCREEN SPACE MARGIN IS SPECIFIED.
-Else, it will remain 0.
-Bear that in mind when building very simple objects!!!!!!!!!!
-------------
+**This is the Free edition.** It includes the full calculation engine and the Asobo Exporter integration. The Pro edition adds the real-time **LOD Viewer / Testing Mode**, which previews LOD transitions inside Blender before you export.
 
-This addon simplifies LOD management by ensuring accurate computations and integration with the Asobo Multi Exporter.
+Both editions share the same core: every calculation improvement, fix or speed gain lands in both at the same time.
+
+## Quick Start
+
+1. Name your collections: `MyModel_LOD00`, `MyModel_LOD01`, `MyModel_LOD02`...
+2. Put your mesh objects into the right collections.
+3. Open the **LN LODs** tab in the 3D Viewport sidebar.
+4. Click **"Calculate LOD Sizes"** — results appear with a progress bar.
+5. Click **"Set LOD Values in Asobo Exporter"** — done.
+
+That's it. The exporter will use the correct thresholds and your LODs will transition smoothly in-sim.
+
+## Features
+
+- **One-click calculation** — Scans all your LOD collections and computes screen sizes using the official Asobo reference curve. A progress bar keeps you informed on large scenes.
+- **Accuracy you can trust** — Counts vertices the same way the exporter does: accounts for UV seams, split normals, vertex colours, and tangents. What you see is what the sim gets.
+- **MSFS Exporter integration** — Writes results directly into the Asobo Multi Exporter's LOD groups. No copy-pasting.
+- **Screen Space Margin** — Adds a safety buffer (2-3% recommended) to prevent LOD flickering in-sim.
+- **Smart collection handling** — Optionally skip hidden collections (and their children) so they don't interfere with your calculation.
+- **Smart alerts** — Empty collections are clearly flagged; collections exceeding the sim's practical range are highlighted in red so you know to optimise further.
+- **Clear Data** — One button to wipe all results and start over, no restart needed.
+- **Exporter status check** — If the MSFS Exporter addon is missing or disabled, you'll see a clear warning in the panel.
+
+---
+
+## Usage Instructions
+
+### MSFS Multi Exporter Setup
+
+1. Enable the **MSFS Asobo Multi Exporter** addon.
+2. In the exporter's Objects tab, turn on **"Grouped By Collections"**.
+
+### LOD Naming
+
+Ensure your LOD collections end with `_LOD00`, `_LOD01`, `_LOD02`, etc. or `_LOD0`, `_LOD1`, `_LOD2`, etc. Examples:
+- `MyModel_LOD00`
+- `MyModel_LOD01`
+- `MyModel_LOD02`
+
+Place all relevant mesh objects into the respective collections for each LOD.
+
+### Calculating LOD Values
+
+1. Go to the **LN LODs** tab in the Blender Sidebar.
+2. Click **"Calculate LOD Sizes"** to compute screen sizes for each `_LODxx` collection.
+3. Review the results: collection name, vertex count, and recommended screen size %.
+4. Adjust the **Screen Space Margin (%)** to account for minor discrepancies between Blender's vertex calculations and the final GLTF/Asobo pipeline. We recommend at least 2-3%.
+5. Click **"Set LOD Values in Asobo Exporter"**. The plugin sends the results to the Asobo Multi Exporter, rounding up decimals to the next integer.
+6. Press **"Open README"** to open this file in your system's text viewer.
+
+### Tips
+
+- **Start with 2-3% margin.** This small buffer prevents the sim from constantly swapping LODs at transition boundaries. You can adjust per project.
+- **Check the warning banners.** If the MSFS Exporter isn't detected, the panel will tell you what's wrong.
+- **Simple objects need margin too.** If your LOD value rounds to 0 but the object is visible, the margin pushes it to 1 so it doesn't disappear.
+- **Use named LOD patterns consistently.** `_LOD00`, `_LOD01`, `_LOD02` or `_LOD0`, `_LOD1`, `_LOD2` both work, but don't mix styles in the same project.
+- **Want to test your LODs before exporting?** That's what the Pro edition's LOD Viewer is for: it simulates MSFS LOD loading in the viewport with the exact coverage formula.
 
 ---
 
-## USAGE INSTRUCTIONS
+**NOTE: THIS IS TO MINIMIZE LOD POPPING.**
+Any LOD collection with a value above `00.00%` gets automatically translated to **1** when sent to the exporter **if any Screen Space Margin is specified**.
+Otherwise, it will remain 0. If you want to set 0.5 (the minimum VSS defined by Asobo) you can set it manually afterwards.
+Bear that in mind when building very simple objects!
 
-To use this addon effectively:
-
-1. Ensure that your LOD collections are correctly named, with no spaces, and end with `_LOD00`, `_LOD01`, `_LOD02` or `_LOD0`, `_LOD1`, `_LOD2`, and so on. Example:
-
-   - `MyModel_LOD00`
-   - `MyModel_LOD01`
-   - `MyModel_LOD02`
-   
-   OR
-   
-   - `MyModel_LOD0`
-   - `MyModel_LOD1`
-   - `MyModel_LOD2`
-   
-
-2. Place all relevant objects within the respective collections.
-
-
-
-### Configuring the Multi Exporter
-
-In the MSFS Asobo Exporter:
-
-1. Navigate to the **Objects** tab.
-2. Ensure that the setting **"Grouped By Collections"** is enabled.
-
-### Using the LNLODs Addon
-
-1. Install and enable the addon in Blender.
-2. In the **3D View Sidebar (N key)**, navigate to the **LNLODs** tab.
-3. Click **"Calculate LOD Sizes"** to compute screen sizes based on vertex counts.
-4. Review the calculated LOD results displayed in the panel.
-5. !!!!!! ALWAYS Input a minimal margin of 2/3% at least, due to the minimal error in calculating the Amount of Vertices of the plugin, compared to the actual export process of the Khronos GLTF Exporter and Asobo Multi Exporter Plugin!
-   Results are close enough but not always 100% accurate in a 1:1 scale. It has a minimal margin of error, so be sure to compensate to avoid re-exporting while in the sim.	
-6. Click **"Set LOD Values in Asobo Exporter"** to automatically transfer the computed values to the MSFS Multi Exporter.
-7. Optionally, click **"Open README"** to view this document directly within Blender.
-
----
+---------------------
 
 ## Support
 
-For issues or feedback, contact Chris "Losco Nosciuto" Da Ros on his discord server:\
-\
-https\://discord.gg/ZGMmYe3MvN
+For issues or feedback, contact **Chris "Losco Nosciuto" Da Ros** on his [Discord server](https://discord.gg/ZGMmYe3MvN).
 
 ---
-## Changelog
 
-2.8.0
+## Version History
 
-	- Blender 4.2 LTS Compatibility
-	- Updated ARRAY values for VSS/Vert Count
-	- Slightly reworked interpolation logic
+### Free Changelog
 
-----------------
+**2.9.0** — Unified core with LN LODs Pro 4.0.3
+- **New calculation engine**, shared with the Pro edition — every core improvement now lands in both editions.
+- **Dramatically faster** on large scenes, with a progress bar during calculation.
+- **Asobo-compliant interpolation** for smoother, more reliable LOD transitions.
+- **1:1 vertex count fidelity** with the MSFS exporter — what you see is what the sim gets.
+- **Cleaner Asobo exporter detection** with status banners in the panel.
+- More accurate "Hide Hidden Collections": hidden collections and their children are correctly excluded.
+- Overall reliability and UI polish.
+- **Reminder:** the LOD Viewer / Testing Mode remains a Pro-only feature.
 
-2.7.5
+**2.8.1**
+- Blender 4.2 LTS compatibility.
+- Updated ARRAY values for VSS/Vert Count.
+- Slightly reworked interpolation logic.
 
-	- Fixed a bug with the "Hide Hidden Collections". Now, both hidden collections and children of hidden collections should correctly be excluded.
+**2.7.5**
+- This free version excludes the real-time LOD Viewer module.
+- Basic calculations and auto-set LOD values remain the same.
+- Fixed a bug with "Hide Hidden Collections" — hidden collections and children of hidden collections are now correctly excluded.
 
+**2.7.0**
+- **Expanded Data Array** — Greatly increased reference points for more accurate mapping from vertex counts to screen space.
+- **New Interpolation Method** — Replaced linear interpolation with a smoother curve for more natural LOD transitions.
+- **Dynamic Vertex Limits** — Removed the fixed 2M vertex limit.
+- **Boundary Handling** — Minor cleanups and improved handling at extreme values.
 
-----------------
+**2.6.0**
+- Added **"Hide Hidden Collections"** to exclude hidden collections from calculations.
 
-2.7
-	- Expanded Data Array
-		Significantly increased the number of reference points in the internal DATA array. 
-		This improvement allows for a WAY MORE precise mapping between vertex counts and screen space values over a wider range, from 0 to the Sim Hard Cap of 1000.
-		
-	- Cubic Spline Interpolation
-		Replaced the previous linear interpolation with Catmull-Rom cubic spline, providing smoother transitions and more accurate interpolation between key points.
-		
-	- Vertices Limits
-		Removed the fixed 2,000,000 vertex limit.
-		The plugin now determines the “out of range” threshold based on the highest key in the DATA array, making it dynamic and more scalable for further changes by Asobo.
-	
-	- Cleanup 
-		Minor code cleanups and added boundary handling for Catmull-Rom interpolation to avoid artifacts at extreme values.
+**2.5.0**
+- **Reworked Vertex Counting Algorithm** — Now accounts for splits from multiple UVs, split normals, vertex colors, tangents. Minimizes mismatch between Blender's internal count and the sim's final vertex count.
 
-----------------------------------------------
+**2.2.0**
+- **Modular Plugin Structure** — Split into multiple scripts. Enables backend expansion and easier bugfixing.
 
-2.6
+**2.0.0**
+- Recognises both single-digit and double-digit LOD suffixes (`_LOD0`, `_LOD01`, etc.).
+- Vertex counting logic now triangulates meshes, adding 2 verts for quads, `(n-3)` for ngons.
 
-	- Added "Hide Hidden Collections" Checkbox to exclude hiddens from the calculations
+**1.8.0**
+- Replaced fixed 2% margin checkbox with a dynamic float input.
+- Enhanced error handling, debug messages, UI clarity.
+- Red highlighting for out-of-range collections.
+- LOD collections exceeding vertex limits are included in results but marked as out of range (displayed in red).
 
--------------------------------
+**1.6.0** (Initial Release)
+- Basic LOD screen size calculation and direct integration with Asobo Multi Exporter.
 
-2.5
-	-REWORKED VERTICES COUNTING ALGORYTHM.
-		- Integrated a new method for calculating "effective" vertices based by the glTF (Khronos) and Asobo pipelines. Now the actual margin of error is minimal.
-		- The vertex count now considers splits caused by: multiple UVs, split normals, vertex colors, and tangents (where available).
+---
 
-
----------------------------
-2.2
-	
-	-Modular Plugin Structure
-		- The plugin codebase has been split into multiple scripts, each dedicated to a specific task. 
-		  This allows backend flexibility for expansion, bugfixing and overall stability.
-
-
-
-
----------------------------
-2.0
-
-	- The Plugin now supports recognizing LOD collections with both single-digit (e.g., _LOD1) and double-digit (e.g., _LOD01) suffixes.
-
-	- The vertex counting logic now accounts for additional vertices generated by the sim, triangulating the output meshes:
-		- Adds 2 vertices for quads.
-		- Adds (n - 3) vertices for ngons, where n is the number of edges.
-		
-		
-
-----------------------------
-
-1.8 
-
-	- Replaced the previous fixed 2% margin checkbox with a dynamic float input
-
-	- Improved error handling and debugging messages.
-
-	- Enhanced UI for better clarity:
-	- Red highlighting for out-of-range collections.
-	- Cleaner layout and labels in the Sidebar.
-	- Added tooltips to all the available interaction points
-
-	- LOD collections exceeding 2 million vertices are now included in the results but marked as out of range.
-		These out of range collections now:
-		- Are displayed in red in the LOD Results panel.
-		- Show a warning in the log: "Vertex Count out of range for [collection name]."
-
-	- Values are now rounded up by the nearest higher integer when transferred to the Asobo Exporter.
-	  This to avoid 3D models to disappear due to being on a decimal value rounded up lower than the minimum
-	
-------------------------
-
-1.6 - Initial Release
-
-Happy blending!
-
+**Happy blending!**
